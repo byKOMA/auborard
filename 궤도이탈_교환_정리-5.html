@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#111113">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>엽서 교환판</title>
+<script>
+(function(){
+  var t=null;
+  try{ t=localStorage.getItem('postcard_theme_v1'); }catch(e){}
+  if(t!=='light' && t!=='dark'){
+    t=(window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+  }
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root, :root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#111113; --bg-glow:#18181b;
+    --surface-2:#1b1b1f; --surface-3:#27272c;
+    --text:#efeff2; --muted:#8e8e99; --line:#ffffff21;
+    --slot-bg:#e3e3e8;
+    --accent:#988cd2; --accent-light:#b9b0e4; --on-accent:#17132e;
+    --board-1:#18181b; --board-2:#141417; --board-shadow:rgba(0,0,0,.35);
+    --empty-1:#1e1e22; --empty-2:#19191c; --empty-num:#3b3b42;
+    --danger-bg:#4a2a2a; --danger-text:#ffd6d6;
+    --keep:#5aa9ff; --need:#ff5c5c;
+  }
+  :root[data-theme="light"]{
+    color-scheme:light;
+    --bg:#ffffff; --bg-glow:#ffffff;
+    --surface-2:#f5f5f8; --surface-3:#ebebf0;
+    --text:#1a1a1f; --muted:#6b6b76; --line:#1a1a1f29;
+    --slot-bg:#e6e6eb;
+    --accent:#6458a8; --accent-light:#7568b8; --on-accent:#ffffff;
+    --board-1:#fafafc; --board-2:#f2f2f5; --board-shadow:rgba(20,20,40,.08);
+    --empty-1:#efeff3; --empty-2:#e7e7ec; --empty-num:#c3c3cc;
+    --danger-bg:#fde8e6; --danger-text:#9a2b22;
+    --keep:#1f6fd1; --need:#d92d2d;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; }
+  html{ background:var(--bg); }
+  input[type=checkbox]{ accent-color:var(--accent); }
+  body{
+    background:radial-gradient(ellipse at top, var(--bg-glow) 0%, var(--bg) 60%);
+    color:var(--text); min-height:100vh; padding-bottom:50px;
+    font-family:'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  }
+  button{ font-family:inherit; cursor:pointer; }
+  input,select{ font-family:inherit; }
+
+  header{
+    padding:22px 18px 14px; position:sticky; top:0; z-index:20;
+    background:linear-gradient(180deg, var(--bg) 75%, transparent);
+    backdrop-filter:blur(6px);
+  }
+  .title-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  h1{ margin:0; font-size:22px; font-weight:800; letter-spacing:-0.02em; }
+  h1 .spark{ color:var(--accent-light); font-size:16px; margin-right:4px; }
+  .ghost-btn{
+    background:none; border:1px solid var(--line); color:var(--muted);
+    border-radius:20px; padding:7px 12px; font-size:12px; font-weight:600;
+  }
+  .stat-btn{ font-family:inherit; text-align:left; color:inherit; cursor:pointer; display:flex; align-items:center; }
+  .stat-btn .stat-num{ font-size:16px; }
+  .detail-list{ display:flex; flex-direction:column; gap:8px; }
+  .detail-row{ display:flex; align-items:center; gap:12px; background:var(--surface-3); border-radius:12px; padding:10px; }
+  .detail-thumb{
+    width:58px; flex-shrink:0; aspect-ratio:var(--card-ratio, 0.6667); border-radius:8px; overflow:hidden;
+    background:var(--slot-bg); display:flex; align-items:center; justify-content:center;
+    color:var(--muted); font-size:11px; font-weight:700;
+  }
+  .detail-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .detail-info{ flex:1; min-width:0; }
+  .detail-name{ font-size:14.5px; font-weight:800; margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .detail-line{ font-size:12.5px; color:var(--muted); line-height:1.6; }
+  .detail-line b{ color:var(--text); font-weight:700; margin-left:4px; word-break:break-all; }
+  .detail-empty{ text-align:center; color:var(--muted); font-size:13px; padding:30px 10px; }
+  .head-btns{ display:flex; gap:6px; }
+  .stats-row{ display:flex; gap:10px; margin-top:14px; }
+  .stat-card{ flex:1; background:var(--surface-2); border:1px solid var(--line); border-radius:14px; padding:10px 12px; }
+  .stat-num{ font-size:20px; font-weight:800; color:var(--accent-light); line-height:1.1; }
+  .stat-label{ font-size:11px; color:var(--muted); margin-top:3px; }
+  .progress-track{ height:6px; background:var(--surface-3); border-radius:4px; margin-top:12px; overflow:hidden; }
+  .progress-fill{ height:100%; width:0; background:linear-gradient(90deg, var(--accent), var(--accent-light)); border-radius:4px; transition:width .4s ease; }
+
+  main{ padding:6px 18px 40px; max-width:900px; margin:0 auto; }
+  .grid-cols-row{ display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .grid-cols-row input[type=number]{
+    width:64px; background:var(--surface-3); border:1px solid var(--line); color:var(--text);
+    border-radius:8px; padding:5px 8px; font-size:12.5px; text-align:center;
+  }
+  .grid-cols-row .sep{ width:10px; }
+  .grid-cols-row label{ font-size:12px; color:var(--muted); font-weight:600; }
+  .grid-cols-row select{
+    background:var(--surface-3); border:1px solid var(--line); color:var(--text);
+    border-radius:8px; padding:5px 8px; font-size:12.5px;
+  }
+  .board{
+    background:linear-gradient(160deg, var(--board-1), var(--board-2));
+    border:1px solid var(--line); border-radius:18px; padding:14px;
+    box-shadow:inset 0 0 30px var(--board-shadow);
+  }
+  .grid{ display:grid; grid-template-columns:repeat(var(--grid-cols, 4), 1fr); gap:10px; }
+  .slot{
+    position:relative; aspect-ratio:var(--card-ratio, 0.6667); border-radius:10px; overflow:hidden;
+    background:var(--slot-bg); border:1px solid rgba(0,0,0,.25); cursor:pointer;
+  }
+  .slot.empty{
+    background:repeating-linear-gradient(135deg, var(--empty-1), var(--empty-1) 8px, var(--empty-2) 8px, var(--empty-2) 16px);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .slot .slot-num{ font-size:24px; font-weight:800; color:var(--empty-num); }
+  .slot img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .slot::after{
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(115deg, rgba(255,255,255,0) 42%, rgba(255,255,255,.2) 50%, rgba(255,255,255,0) 58%);
+  }
+  .slot.need{ box-shadow:0 0 0 2px var(--need); }
+  .slot.keep{ box-shadow:0 0 0 2px var(--keep); }
+  .slot.traded:not(.keep){ filter:grayscale(1); opacity:.42; }
+  .keep-row{
+    display:flex; align-items:center; gap:10px; margin-top:14px; padding:11px 12px;
+    background:var(--surface-3); border-radius:10px; font-size:14px; font-weight:700; cursor:pointer;
+  }
+  .keep-row input{ width:20px; height:20px; margin:0; accent-color:var(--keep); flex-shrink:0; }
+  .keep-row small{ color:var(--muted); font-weight:600; font-size:12px; }
+  .badge-num{
+    position:absolute; top:4px; left:5px; max-width:calc(100% - 52px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; font-weight:800; color:#fff;
+    background:rgba(0,0,0,.5); border-radius:6px; padding:1px 5px; z-index:2;
+  }
+  .trade-tag{
+    position:absolute; left:0; right:0; bottom:0; z-index:2; padding:4px 6px 5px;
+    background:linear-gradient(0deg, rgba(6,22,15,.92), rgba(6,22,15,.7));
+    color:#fff; font-size:10.5px; font-weight:700; line-height:1.3; text-align:center;
+  }
+  .trade-tag .t-id{ color:var(--accent-light); display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .trade-tag .t-method{ font-weight:600; opacity:.85; font-size:9.5px; }
+
+  .add-btn{
+    width:100%; margin-top:12px; border-radius:12px; padding:12px; font-size:14px; font-weight:700;
+    background:var(--surface-2); border:1px solid var(--line); color:var(--text);
+  }
+
+  .modal-overlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; align-items:flex-end; justify-content:center; }
+  .modal-overlay.active{ display:flex; }
+  .modal-sheet{
+    background:var(--surface-2); width:100%; max-width:640px; border-radius:20px 20px 0 0;
+    padding:18px 18px 26px; max-height:90vh; overflow-y:auto; animation:slideUp .22s ease;
+  }
+  @keyframes slideUp{ from{ transform:translateY(20px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+  .modal-handle{ width:36px; height:4px; background:var(--line); border-radius:3px; margin:0 auto 14px; }
+  .modal-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .modal-title{ font-size:17px; font-weight:800; }
+  .modal-x{ background:none; border:none; color:var(--muted); font-size:18px; padding:4px 6px; line-height:1; }
+  .field-label{ font-size:12.5px; font-weight:700; color:var(--muted); margin:14px 0 6px; }
+  .field-input{
+    width:100%; background:var(--surface-3); border:1px solid var(--line); color:var(--text);
+    border-radius:10px; padding:11px 12px; font-size:14px;
+  }
+  textarea.field-input{ resize:vertical; min-height:84px; line-height:1.5; }
+  .badge-memo{
+    position:absolute; top:4px; right:5px; font-size:10px; font-weight:800; color:var(--on-accent);
+    background:var(--accent-light); border-radius:6px; padding:1px 6px; z-index:2;
+  }
+  .modal-actions{ display:flex; gap:10px; margin-top:20px; }
+  .modal-actions button{ flex:1; border-radius:12px; border:none; padding:12px; font-size:14px; font-weight:700; }
+  .btn-primary{ background:var(--accent); color:var(--on-accent); }
+  .btn-secondary{ background:var(--surface-3); color:var(--text); }
+  .btn-danger{ background:var(--danger-bg); color:var(--danger-text); }
+  .thumb-row{ display:flex; align-items:center; gap:12px; }
+  .thumb{
+    width:64px; aspect-ratio:var(--card-ratio, 0.6667); border-radius:8px; overflow:hidden;
+    background:var(--surface-3); flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    color:var(--muted); font-size:11px;
+  }
+  .thumb img{ width:100%; height:100%; object-fit:cover; }
+  .thumb-row{ flex:1; min-width:0; }
+  .title-input{
+    flex:1; min-width:0; background:transparent; border:none; border-bottom:1px dashed var(--line);
+    color:var(--text); font-size:16px; font-weight:800; padding:6px 2px; border-radius:0; outline:none;
+  }
+  .title-input:focus{ border-bottom-color:var(--accent); }
+  .title-input::placeholder{ color:var(--muted); font-weight:600; }
+
+  .hint{ font-size:12px; color:var(--muted); margin:2px 0 10px; line-height:1.5; }
+  .stage{ position:relative; width:100%; max-height:56vh; overflow:hidden; border-radius:12px; background:#000; touch-action:none; display:flex; margin-top:10px; }
+  .stage img{ width:100%; height:auto; display:block; user-select:none; -webkit-user-drag:none; }
+  .crop-box{ position:absolute; border:2px solid var(--accent); box-shadow:0 0 0 2000px rgba(0,0,0,.6); touch-action:none; }
+  .crop-handle{
+    position:absolute; width:22px; height:22px; background:var(--accent); border-radius:50%;
+    border:2px solid #fff; touch-action:none; transform:translate(-50%,-50%);
+  }
+  .crop-handle[data-h="nw"]{ top:0; left:0; }
+  .crop-handle[data-h="ne"]{ top:0; left:100%; }
+  .crop-handle[data-h="sw"]{ top:100%; left:0; }
+  .crop-handle[data-h="se"]{ top:100%; left:100%; }
+  .two-col{ display:flex; gap:10px; }
+  .two-col > div{ flex:1; }
+  input[type=file]{ display:none; }
+  #tradeThumb{ position:relative; cursor:pointer; }
+  #tradeThumb::after{
+    content:'✎'; position:absolute; right:3px; bottom:3px; width:18px; height:18px; border-radius:50%;
+    background:rgba(0,0,0,.6); color:#fff; font-size:10px; line-height:18px; text-align:center; pointer-events:none;
+  }
+  .edit-stage{ display:flex; justify-content:center; background:#000; border-radius:12px; margin-top:10px; }
+  .edit-wrap{ position:relative; display:inline-block; line-height:0; overflow:hidden; max-width:100%; touch-action:none; }
+  .edit-wrap img{ display:block; max-width:100%; max-height:56vh; width:auto; height:auto; user-select:none; -webkit-user-drag:none; }
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--accent-light); color:var(--on-accent);
+    font-weight:700; font-size:13px; padding:10px 18px; border-radius:30px; z-index:200; opacity:0;
+    pointer-events:none; transition:opacity .25s ease;
+  }
+  .toast.show{ opacity:1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-row">
+    <h1><span class="spark">✦</span>엽서 교환판</h1>
+    <div class="head-btns">
+      <button class="ghost-btn" id="themeBtn">☀ 라이트</button>
+      <button class="ghost-btn" id="backupBtn">백업</button>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-num" id="statTraded">0/16</div><div class="stat-label">교환 정해진 엽서</div></div>
+    <button class="stat-card stat-btn" id="detailBtn"><div class="stat-num">교환 상세 보기 ›</div></button>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+</header>
+
+<main>
+  <div class="grid-cols-row">
+    <label for="totalInput">총</label>
+    <input type="number" id="totalInput" min="1" max="100" value="16" inputmode="numeric">
+    <label for="totalInput">장</label>
+    <span class="sep"></span>
+    <label for="gridColsSelect">한 줄에</label>
+    <select id="gridColsSelect">
+      <option value="2">2장</option>
+      <option value="3">3장</option>
+      <option value="4">4장</option>
+      <option value="5">5장</option>
+      <option value="6">6장</option>
+      <option value="8">8장</option>
+    </select>
+  </div>
+  <div class="board"><div class="grid" id="grid"></div></div>
+  <button class="add-btn" id="openBatchBtn">이미지 한번에 나누기</button>
+</main>
+
+<!-- 엽서 교환 정보 모달 -->
+<div class="modal-overlay" id="tradeModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div class="thumb-row">
+        <div class="thumb" id="tradeThumb">없음</div>
+        <input class="title-input" id="nameInput" placeholder="작품 이름" autocomplete="off">
+      </div>
+      <button class="modal-x" id="tradeX" aria-label="닫기">✕</button>
+    </div>
+    <label class="keep-row"><input type="checkbox" id="keepInput"><span>소장용 <small>(내가 보관할 엽서)</small></span></label>
+    <div class="field-label">교환 대상 아이디</div>
+    <input class="field-input" id="partnerInput" placeholder="@아이디" autocomplete="off">
+    <div class="field-label">교환 방법</div>
+    <select class="field-input" id="methodSelect">
+      <option value="">선택 안 함</option>
+      <option value="GS 반택">GS 반택</option>
+      <option value="CU 반택">CU 반택</option>
+      <option value="일반 택배">일반 택배</option>
+      <option value="직거래">직거래</option>
+    </select>
+    <div class="field-label">메모 (주소, 약속 시간 등)</div>
+    <textarea class="field-input" id="memoInput" placeholder="예: 10/12 오후 3시 홍대입구역 / 받는 분 주소 등"></textarea>
+    <div class="modal-actions">
+      <button class="btn-danger" id="tradeClear">비우기</button>
+      <button class="btn-primary" id="tradeSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 이미지 한번에 나누기 모달 -->
+<div class="modal-overlay" id="batchModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div class="modal-title">이미지 한번에 나누기</div>
+      <button class="modal-x" id="batchX" aria-label="닫기">✕</button>
+    </div>
+    <div class="hint">칸 크기가 고른 시트에서만 잘 맞아. 엽서들이 들어있는 바깥 테두리를 맞춰줘.</div>
+    <input type="file" accept="image/*" id="batchFile">
+    <button class="add-btn" id="batchPickBtn" style="margin-top:0;">시트 이미지 선택</button>
+    <div class="stage" id="stage" style="display:none;">
+      <img id="stageImg" draggable="false">
+      <div class="crop-box" id="cropBox">
+        <div class="crop-handle" data-h="nw"></div>
+        <div class="crop-handle" data-h="ne"></div>
+        <div class="crop-handle" data-h="sw"></div>
+        <div class="crop-handle" data-h="se"></div>
+      </div>
+    </div>
+    <div id="batchOptions" style="display:none;">
+      <div class="two-col">
+        <div><div class="field-label">가로 칸 수</div><input class="field-input" type="number" id="bCols" value="4" min="1" max="16"></div>
+        <div><div class="field-label">세로 칸 수</div><input class="field-input" type="number" id="bRows" value="4" min="1" max="16"></div>
+      </div>
+      <div class="field-label">시작 엽서 번호</div>
+      <input class="field-input" type="number" id="bStart" value="1" min="1" max="16">
+      <div class="field-label">채우는 순서</div>
+      <select class="field-input" id="bOrder">
+        <option value="row">가로부터 (한 줄씩 왼쪽→오른쪽)</option>
+        <option value="col">세로부터 (한 열씩 위→아래)</option>
+      </select>
+      <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--muted); margin-top:12px;">
+        <input type="checkbox" id="bTrim" checked style="display:inline-block;"> 칸 사이 여백 살짝 잘라내기
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="batchCancel">취소</button>
+      <button class="btn-primary" id="batchConfirm" style="display:none;">나눠서 채우기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 교환 상세 보기 모달 -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div class="modal-title">교환 상세 보기</div>
+      <button class="modal-x" id="detailX" aria-label="닫기">✕</button>
+    </div>
+    <div class="detail-list" id="detailList"></div>
+  </div>
+</div>
+
+<!-- 이미지 편집 모달 -->
+<div class="modal-overlay" id="imgEditModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div class="modal-title" id="ieTitle">이미지 편집</div>
+      <button class="modal-x" id="ieX" aria-label="닫기">✕</button>
+    </div>
+    <div class="hint">네모를 드래그해서 옮기고, 모서리 점으로 크기를 조절해. 비율은 엽서 크기(140×190)로 고정돼.</div>
+    <input type="file" accept="image/*" id="ieFile">
+    <button class="add-btn" id="iePickBtn" style="margin-top:0;">다른 이미지로 교체</button>
+    <div class="edit-stage" id="ieStage" style="display:none;">
+      <div class="edit-wrap" id="ieWrap">
+        <img id="ieImg" draggable="false">
+        <div class="crop-box" id="ieBox">
+          <div class="crop-handle" data-h="nw"></div>
+          <div class="crop-handle" data-h="ne"></div>
+          <div class="crop-handle" data-h="sw"></div>
+          <div class="crop-handle" data-h="se"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-danger" id="ieDelete">이미지 삭제</button>
+      <button class="btn-secondary" id="ieCancel">취소</button>
+      <button class="btn-primary" id="ieSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const CARD_W = 140, CARD_H = 190;          // 엽서 크기 (mm)
+  const CARD_RATIO = CARD_W / CARD_H;        // 가로/세로
+  const OUT_W = 420, OUT_H = Math.round(OUT_W * CARD_H / CARD_W);  // 저장 이미지 크기(px)
+  let TOTAL = 16;
+  const MAX_TOTAL = 100;
+  const KEY = 'postcard_trade_v1';
+  let state = load();
+  TOTAL = state.cards.length;
+  let editingId = null;
+
+  function defaultState(){
+    const cards = [];
+    for(let i=1;i<=TOTAL;i++) cards.push({ id:i, image:'', name:'', partner:'', method:'', memo:'', keep:false });
+    return { cards, settings:{ gridCols:4, ratio:CARD_RATIO } };
+  }
+  function load(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      if(!raw) return defaultState();
+      const p = JSON.parse(raw);
+      if(!Array.isArray(p.cards) || p.cards.length < 1) return defaultState();
+      if(!p.settings) p.settings = {};
+      if(!p.settings.gridCols) p.settings.gridCols = 4;
+      p.settings.ratio = CARD_RATIO;
+      return p;
+    }catch(e){ return defaultState(); }
+  }
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch(e){ toast('저장 공간이 부족해. 백업 후 정리해줘'); }
+  }
+  const $ = id => document.getElementById(id);
+  const cardById = id => state.cards.find(c=>c.id===id);
+  function esc(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function toast(msg){
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 1600);
+  }
+
+  /* ----- 화면 ----- */
+  function applySettings(){
+    const r = document.documentElement.style;
+    r.setProperty('--grid-cols', state.settings.gridCols);
+    r.setProperty('--card-ratio', state.settings.ratio);
+    $('gridColsSelect').value = state.settings.gridCols;
+  }
+  $('gridColsSelect').addEventListener('change', e=>{
+    state.settings.gridCols = parseInt(e.target.value);
+    save(); applySettings();
+  });
+
+  $('totalInput').addEventListener('change', e=>{
+    let n = parseInt(e.target.value);
+    if(isNaN(n) || n < 1){ e.target.value = TOTAL; return; }
+    n = Math.min(MAX_TOTAL, n);
+    if(n === TOTAL){ e.target.value = TOTAL; return; }
+    if(n < TOTAL){
+      const lost = state.cards.slice(n).filter(c=> c.image || c.name || c.partner || c.method || c.memo || c.keep);
+      if(lost.length && !confirm(`${n+1}번 이후 엽서 중 ${lost.length}장에 입력된 내용이 있어. 장수를 줄이면 그 내용이 삭제돼. 계속할까?`)){
+        e.target.value = TOTAL; return;
+      }
+      state.cards = state.cards.slice(0, n);
+    } else {
+      for(let i=TOTAL+1;i<=n;i++) state.cards.push({ id:i, image:'', name:'', partner:'', method:'', memo:'', keep:false });
+    }
+    TOTAL = n;
+    save(); render();
+    toast(`총 ${n}장으로 바꿨어`);
+  });
+
+  function render(){
+    const grid = $('grid');
+    grid.innerHTML = '';
+    let traded = 0;
+    state.cards.forEach(c=>{
+      const has = !!(c.partner || c.method || c.memo);
+      if(has) traded++;
+      const slot = document.createElement('div');
+      slot.className = 'slot' + (c.image ? '' : ' empty') + (has ? ' traded' : '') + (c.keep ? ' keep' : '') + (!has && !c.keep ? ' need' : '');
+      if(c.image) slot.innerHTML += `<img src="${c.image}">`;
+      else slot.innerHTML += `<div class="slot-num">${c.id}</div>`;
+      slot.addEventListener('click', ()=> openTrade(c.id));
+      grid.appendChild(slot);
+    });
+    $('statTraded').textContent = traded + '/' + TOTAL;
+    $('progressFill').style.width = Math.round(traded/TOTAL*100) + '%';
+    $('totalInput').value = TOTAL;
+    $('bStart').max = TOTAL;
+  }
+
+  /* ----- 교환 정보 모달 ----- */
+  function openTrade(id){
+    editingId = id;
+    const c = cardById(id);
+    $('nameInput').value = c.name || '';
+    $('nameInput').placeholder = '엽서 #' + id + ' (작품 이름 입력)';
+    $('tradeThumb').innerHTML = c.image ? `<img src="${c.image}">` : '없음';
+    $('partnerInput').value = c.partner || '';
+    $('methodSelect').value = c.method || '';
+    $('memoInput').value = c.memo || '';
+    $('keepInput').checked = !!c.keep;
+    $('tradeModal').classList.add('active');
+  }
+  function closeTrade(){ $('tradeModal').classList.remove('active'); }
+  $('tradeX').addEventListener('click', closeTrade);
+  $('tradeModal').addEventListener('click', e=>{ if(e.target === $('tradeModal')) closeTrade(); });
+  $('tradeSave').addEventListener('click', ()=>{
+    const c = cardById(editingId);
+    c.name = $('nameInput').value.trim();
+    c.partner = $('partnerInput').value.trim();
+    c.method = $('methodSelect').value;
+    c.memo = $('memoInput').value.trim();
+    c.keep = $('keepInput').checked;
+    save(); render(); closeTrade(); toast('저장했어');
+  });
+  $('tradeClear').addEventListener('click', ()=>{
+    const c = cardById(editingId);
+    c.partner = ''; c.method = ''; c.memo = '';
+    save(); render(); closeTrade(); toast('비웠어');
+  });
+
+  /* ----- 이미지 한번에 나누기 ----- */
+  let srcImg = null, srcURL = null;
+  let box = { x:0, y:0, w:100, h:100 };
+  let dispW = 0, dispH = 0;
+  let dragMode = null, dragStart = null;
+
+  $('openBatchBtn').addEventListener('click', ()=>{
+    srcImg = null; srcURL = null;
+    $('stage').style.display = 'none';
+    $('batchOptions').style.display = 'none';
+    $('batchConfirm').style.display = 'none';
+    $('batchModal').classList.add('active');
+  });
+  function closeBatch(){ $('batchModal').classList.remove('active'); }
+  $('batchX').addEventListener('click', closeBatch);
+  $('batchCancel').addEventListener('click', closeBatch);
+  $('batchPickBtn').addEventListener('click', ()=> $('batchFile').click());
+
+  $('batchFile').addEventListener('change', e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      const img = new Image();
+      img.onload = ()=>{
+        srcImg = img; srcURL = ev.target.result;
+        const el = $('stageImg');
+        el.onload = initBox;
+        el.src = srcURL;
+        $('stage').style.display = 'flex';
+        $('batchOptions').style.display = 'block';
+        $('batchConfirm').style.display = 'block';
+        if(el.complete) requestAnimationFrame(initBox);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+
+  function initBox(){
+    const el = $('stageImg');
+    dispW = el.clientWidth; dispH = el.clientHeight;
+    const inset = 0.04;
+    box = { x:dispW*inset, y:dispH*inset, w:dispW*(1-2*inset), h:dispH*(1-2*inset) };
+    renderBox();
+  }
+  function renderBox(){
+    const b = $('cropBox');
+    b.style.left = box.x+'px'; b.style.top = box.y+'px';
+    b.style.width = box.w+'px'; b.style.height = box.h+'px';
+  }
+  function clampBox(b){
+    const MIN = 40;
+    b.w = Math.max(MIN, Math.min(b.w, dispW));
+    b.h = Math.max(MIN, Math.min(b.h, dispH));
+    b.x = Math.max(0, Math.min(b.x, dispW - b.w));
+    b.y = Math.max(0, Math.min(b.y, dispH - b.h));
+    return b;
+  }
+  $('cropBox').addEventListener('pointerdown', e=>{
+    if(e.target.dataset.h) return;
+    dragMode = 'move';
+    dragStart = { px:e.clientX, py:e.clientY, box:{...box} };
+    e.preventDefault();
+  });
+  document.querySelectorAll('#cropBox .crop-handle').forEach(h=>{
+    h.addEventListener('pointerdown', e=>{
+      dragMode = h.dataset.h;
+      dragStart = { px:e.clientX, py:e.clientY, box:{...box} };
+      e.preventDefault(); e.stopPropagation();
+    });
+  });
+  document.addEventListener('pointermove', e=>{
+    if(!dragMode) return;
+    const dx = e.clientX - dragStart.px, dy = e.clientY - dragStart.py;
+    const s = dragStart.box;
+    let b = {...s};
+    if(dragMode === 'move'){ b.x = s.x+dx; b.y = s.y+dy; }
+    else {
+      if(dragMode==='se'){ b.w=s.w+dx; b.h=s.h+dy; }
+      else if(dragMode==='ne'){ b.w=s.w+dx; b.h=s.h-dy; b.y=s.y+dy; }
+      else if(dragMode==='sw'){ b.w=s.w-dx; b.h=s.h+dy; b.x=s.x+dx; }
+      else if(dragMode==='nw'){ b.w=s.w-dx; b.h=s.h-dy; b.x=s.x+dx; b.y=s.y+dy; }
+    }
+    box = clampBox(b);
+    renderBox();
+  });
+  document.addEventListener('pointerup', ()=>{ dragMode = null; });
+
+  $('batchConfirm').addEventListener('click', ()=>{
+    const cols = Math.max(1, parseInt($('bCols').value)||1);
+    const rows = Math.max(1, parseInt($('bRows').value)||1);
+    const start = Math.max(1, Math.min(TOTAL, parseInt($('bStart').value)||1));
+    const order = $('bOrder').value;
+    const trim = $('bTrim').checked;
+    const fill = Math.min(cols*rows, TOTAL - start + 1);
+    if(!confirm(`엽서 #${start}부터 ${fill}장에 이미지를 채울게. 기존 이미지는 덮어써져. 계속할까?`)) return;
+
+    const scaleX = srcImg.naturalWidth / dispW;
+    const scaleY = srcImg.naturalHeight / dispH;
+    const cellW = box.w / cols, cellH = box.h / rows;
+    const tr = trim ? 0.03 : 0;
+    const mW = cellW*tr, mH = cellH*tr;
+
+    const cells = [];
+    if(order === 'row'){ for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) cells.push({r,c}); }
+    else { for(let c=0;c<cols;c++) for(let r=0;r<rows;r++) cells.push({r,c}); }
+
+    state.settings.ratio = CARD_RATIO;
+    let n = start;
+    for(const cell of cells){
+      if(n > TOTAL) break;
+      const sx = (box.x + cell.c*cellW + mW) * scaleX;
+      const sy = (box.y + cell.r*cellH + mH) * scaleY;
+      const sw = (cellW - mW*2) * scaleX;
+      const sh = (cellH - mH*2) * scaleY;
+      const cv = document.createElement('canvas');
+      cv.width = OUT_W; cv.height = OUT_H;
+      cv.getContext('2d').drawImage(srcImg, sx, sy, sw, sh, 0, 0, OUT_W, OUT_H);
+      cardById(n).image = cv.toDataURL('image/jpeg', 0.82);
+      n++;
+    }
+    save(); applySettings(); render(); closeBatch();
+    toast('시트를 나눠서 채웠어');
+  });
+
+  /* ----- 교환 상세 보기 ----- */
+  function openDetail(){
+    const list = $('detailList');
+    const rows = state.cards.filter(c=> c.partner || c.method || c.memo);
+    if(!rows.length){
+      list.innerHTML = '<div class="detail-empty">아직 교환 정보가 입력된 엽서가 없어</div>';
+    } else {
+      list.innerHTML = rows.map(c=>{
+        const title = c.name ? esc(c.name) : `엽서 #${c.id}`;
+        return `<div class="detail-row">
+          <div class="detail-thumb">${c.image ? `<img src="${c.image}">` : '없음'}</div>
+          <div class="detail-info">
+            <div class="detail-name">${title}</div>
+            <div class="detail-line">교환 상대 ID<b>${c.partner ? esc(c.partner) : '-'}</b></div>
+            <div class="detail-line">교환 방법<b>${c.method ? esc(c.method) : '-'}</b></div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    $('detailModal').classList.add('active');
+  }
+  function closeDetail(){ $('detailModal').classList.remove('active'); }
+  $('detailBtn').addEventListener('click', openDetail);
+  $('detailX').addEventListener('click', closeDetail);
+  $('detailModal').addEventListener('click', e=>{ if(e.target === $('detailModal')) closeDetail(); });
+
+  /* ----- 이미지 편집 (상세 보기에서 썸네일 탭) ----- */
+  let ieId = null, ieHasImg = false;
+  let ieBox = { x:0, y:0, w:100, h:100 };
+  let ieW = 0, ieH = 0, ieDrag = null, ieStart = null;
+
+  $('tradeThumb').addEventListener('click', ()=>{ if(editingId !== null) openImgEdit(editingId); });
+  function refreshTradeThumb(){
+    const c = cardById(editingId);
+    if(c) $('tradeThumb').innerHTML = c.image ? `<img src="${c.image}">` : '없음';
+  }
+  function setIEState(has){
+    ieHasImg = has;
+    $('ieStage').style.display = has ? 'flex' : 'none';
+    $('ieSave').style.display = has ? 'block' : 'none';
+    $('ieDelete').style.display = (has || (cardById(ieId) && cardById(ieId).image)) ? 'block' : 'none';
+    $('iePickBtn').textContent = has ? '다른 이미지로 교체' : '이미지 선택';
+  }
+  function openImgEdit(id){
+    ieId = id;
+    const c = cardById(id);
+    $('ieTitle').textContent = '이미지 편집 #' + id + (c.name ? ' ' + c.name : '');
+    $('imgEditModal').classList.add('active');
+    if(c.image) loadIE(c.image); else setIEState(false);
+  }
+  function closeImgEdit(){ $('imgEditModal').classList.remove('active'); ieDrag = null; }
+  function loadIE(url){
+    setIEState(true);
+    const el = $('ieImg');
+    el.onload = ()=> requestAnimationFrame(initIE);
+    el.src = url;
+    if(el.complete && el.naturalWidth) requestAnimationFrame(initIE);
+  }
+  function initIE(){
+    const el = $('ieImg');
+    ieW = el.clientWidth; ieH = el.clientHeight;
+    if(!ieW || !ieH) return;
+    const ratio = CARD_RATIO;
+    let w = ieW * 0.92, h = w / ratio;
+    if(h > ieH * 0.92){ h = ieH * 0.92; w = h * ratio; }
+    ieBox = { x:(ieW-w)/2, y:(ieH-h)/2, w, h };
+    renderIE();
+  }
+  function renderIE(){
+    const b = $('ieBox');
+    b.style.left = ieBox.x+'px'; b.style.top = ieBox.y+'px';
+    b.style.width = ieBox.w+'px'; b.style.height = ieBox.h+'px';
+  }
+  $('ieBox').addEventListener('pointerdown', e=>{
+    if(e.target.dataset.h) return;
+    ieDrag = 'move';
+    ieStart = { px:e.clientX, py:e.clientY, box:{...ieBox} };
+    e.preventDefault();
+  });
+  document.querySelectorAll('#ieBox .crop-handle').forEach(h=>{
+    h.addEventListener('pointerdown', e=>{
+      ieDrag = h.dataset.h;
+      ieStart = { px:e.clientX, py:e.clientY, box:{...ieBox} };
+      e.preventDefault(); e.stopPropagation();
+    });
+  });
+  document.addEventListener('pointermove', e=>{
+    if(!ieDrag) return;
+    const ratio = CARD_RATIO;
+    const dx = e.clientX - ieStart.px, dy = e.clientY - ieStart.py;
+    const s = ieStart.box;
+    if(ieDrag === 'move'){
+      ieBox = {
+        w:s.w, h:s.h,
+        x:Math.max(0, Math.min(s.x+dx, ieW - s.w)),
+        y:Math.max(0, Math.min(s.y+dy, ieH - s.h))
+      };
+    } else {
+      const east = ieDrag.includes('e'), south = ieDrag.includes('s');
+      const ax = east ? s.x : s.x + s.w;      // 반대쪽 모서리 고정
+      const ay = south ? s.y : s.y + s.h;
+      let w = east ? s.w + dx : s.w - dx;
+      const roomX = east ? ieW - ax : ax;
+      const roomY = south ? ieH - ay : ay;
+      const maxW = Math.min(roomX, roomY * ratio);
+      const minW = Math.min(40, maxW);
+      w = Math.max(minW, Math.min(w, maxW));
+      const h = w / ratio;
+      ieBox = { w, h, x: east ? ax : ax - w, y: south ? ay : ay - h };
+    }
+    renderIE();
+  });
+  document.addEventListener('pointerup', ()=>{ ieDrag = null; });
+
+  $('iePickBtn').addEventListener('click', ()=> $('ieFile').click());
+  $('ieFile').addEventListener('change', e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev=> loadIE(ev.target.result);
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+  $('ieX').addEventListener('click', closeImgEdit);
+  $('ieCancel').addEventListener('click', closeImgEdit);
+  $('ieSave').addEventListener('click', ()=>{
+    if(!ieHasImg) return;
+    const el = $('ieImg');
+    if(!el.naturalWidth) return;
+    const ratio = CARD_RATIO;
+    const scaleX = el.naturalWidth / ieW, scaleY = el.naturalHeight / ieH;
+    const cv = document.createElement('canvas');
+    cv.width = OUT_W; cv.height = OUT_H;
+    cv.getContext('2d').drawImage(el, ieBox.x*scaleX, ieBox.y*scaleY, ieBox.w*scaleX, ieBox.h*scaleY, 0, 0, OUT_W, OUT_H);
+    cardById(ieId).image = cv.toDataURL('image/jpeg', 0.82);
+    save(); render(); refreshTradeThumb(); closeImgEdit();
+    toast('이미지를 바꿨어');
+  });
+  $('ieDelete').addEventListener('click', ()=>{
+    if(!confirm('엽서 #' + ieId + '의 이미지를 삭제할까?')) return;
+    cardById(ieId).image = '';
+    save(); render(); refreshTradeThumb(); closeImgEdit();
+    toast('이미지를 삭제했어');
+  });
+
+  /* ----- 백업 ----- */
+  async function exportBackup(){
+    const json = JSON.stringify(state);
+    const filename = 'postcard-trade-' + new Date().toISOString().slice(0,10) + '.json';
+    let dl = null;
+    try{ if(window.claude && window.claude.use) dl = await window.claude.use('downloads'); }catch(e){}
+    if(dl){
+      try{ await dl.save({ filename, data: json }); toast('내보냈어'); }
+      catch(err){ if(!err || err.code !== 'declined') toast('내보내기에 실패했어'); }
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([json], {type:'application/json'}));
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  $('backupBtn').addEventListener('click', ()=>{
+    if(confirm('내보내기(확인) / 불러오기(취소) 중 하나를 선택해줘')){
+      exportBackup();
+    } else {
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = 'application/json';
+      input.onchange = e=>{
+        const f = e.target.files[0]; if(!f) return;
+        const r = new FileReader();
+        r.onload = ev=>{
+          try{
+            const d = JSON.parse(ev.target.result);
+            if(Array.isArray(d.cards) && d.cards.length >= 1){
+              state = d;
+              TOTAL = state.cards.length;
+              if(!state.settings) state.settings = { gridCols:4, ratio:CARD_RATIO };
+              state.settings.ratio = CARD_RATIO;
+              save(); applySettings(); render(); toast('불러왔어');
+            } else alert('올바른 백업 파일이 아니야');
+          }catch(err){ alert('파일을 읽을 수 없어'); }
+        };
+        r.readAsText(f);
+      };
+      input.click();
+    }
+  });
+
+  /* ----- 라이트/다크 ----- */
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  const curTheme = ()=> document.documentElement.getAttribute('data-theme');
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    themeMeta.setAttribute('content', t === 'light' ? '#ffffff' : '#111113');
+    $('themeBtn').textContent = t === 'light' ? '☾ 다크' : '☀ 라이트';
+  }
+  $('themeBtn').addEventListener('click', ()=>{
+    const next = curTheme() === 'light' ? 'dark' : 'light';
+    try{ localStorage.setItem('postcard_theme_v1', next); }catch(e){}
+    applyTheme(next);
+  });
+  if(window.matchMedia){
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', e=>{
+      let saved = null;
+      try{ saved = localStorage.getItem('postcard_theme_v1'); }catch(err){}
+      if(saved !== 'light' && saved !== 'dark') applyTheme(e.matches ? 'light' : 'dark');
+    });
+  }
+  applyTheme(curTheme());
+
+  applySettings();
+  render();
+})();
+</script>
+</body>
+</html>
